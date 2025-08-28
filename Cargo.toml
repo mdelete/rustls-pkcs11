@@ -1,0 +1,28 @@
+[package]
+name = "rustls-pkcs11"
+version = "0.1.0"
+description = "ClientCertResolver for Hardware Security Modules using the PKCS11-Api"
+edition = "2024"
+license = "MIT"
+homepage = "https://github.com/mdelete/rustls-pkcs11"
+repository = "https://github.com/mdelete/rustls-pkcs11"
+readme = "README.md"
+keywords = ["pkcs11", "rustls"]
+categories = ["cryptography"]
+
+[dependencies]
+cryptoki = "0.10"
+rustls = ">=0.22"
+x509-certificate = "0.25"
+asn1 = "0.22"
+log = "0.4"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+rpassword = "7.4.0"
+regex = "1.11.1"
+env_logger = "0.11.8"
+reqwest = { version = "0.12.23", features = ["rustls-tls"] }
+
+[build-dependencies]
+openssl = "0.10.73"
