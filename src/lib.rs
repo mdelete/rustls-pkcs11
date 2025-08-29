@@ -134,7 +134,7 @@ impl Signer for PKCS11Signer {
 
         let mechanism = self.try_into()?;
 
-        let signed_message = session.sign(&mechanism, key, message).map_err(|err| {
+        let mut signed_message = session.sign(&mechanism, key, message).map_err(|err| {
             rustls::Error::Other(OtherError(Arc::new(PKCS11Error::SignError(err))))
         })?;
 
@@ -253,13 +253,23 @@ impl PKCS11ClientCertResolver {
 
 /// helper trait to deal with asn.1
 trait ToASN1 {
-    fn to_asn1_sig(&self) -> Result<Vec<u8>, asn1::WriteError>;
+    fn to_asn1_sig(&mut self) -> Result<Vec<u8>, asn1::WriteError>;
 }
 
 /// transforms a raw r,s-form signature to an asn1 sequence
 impl ToASN1 for Vec<u8> {
-    fn to_asn1_sig(&self) -> Result<Vec<u8>, asn1::WriteError> {
-        let mid = self.len() / 2;
+    fn to_asn1_sig(&mut self) -> Result<Vec<u8>, asn1::WriteError> {
+        let mut mid = self.len() / 2;
+
+        // if r or s are negative (have the msb set) we need to prepend a null byte before converting to bigint
+        if self[0] >> 7 != 0 {
+            self.insert(0, 0u8);
+            mid += 1;
+        }
+        if self[mid] >> 7 != 0 {
+            self.insert(mid, 0u8);
+        }
+
         asn1::write(|w| {
             w.write_element(&asn1::SequenceWriter::new(&|w: &mut asn1::Writer| {
                 let r = asn1::BigInt::new(&self[..mid]);
