@@ -17,7 +17,7 @@ use openssl::pkcs12::Pkcs12;
 use openssl::pkey::{PKey, PKeyRef, Private};
 use openssl::rsa::Rsa;
 use openssl::x509::extension::{
-    AuthorityKeyIdentifier, BasicConstraints, KeyUsage, SubjectAlternativeName,
+    AuthorityKeyIdentifier, BasicConstraints, ExtendedKeyUsage, KeyUsage, SubjectAlternativeName,
     SubjectKeyIdentifier,
 };
 use openssl::x509::{X509, X509NameBuilder, X509Ref, X509Req, X509ReqBuilder, X509VerifyResult};
@@ -147,8 +147,13 @@ fn mk_ca_signed_cert(
                 .ip("::1")
                 .build(&cert_builder.x509v3_context(Some(ca_cert), None))?;
             cert_builder.append_extension(subject_alt_name)?;
+            let extened_usage = ExtendedKeyUsage::new().server_auth().build()?;
+            cert_builder.append_extension(extened_usage)?;
         }
-        _ => {}
+        Usage::CLIENT => {
+            let extened_usage = ExtendedKeyUsage::new().client_auth().build()?;
+            cert_builder.append_extension(extened_usage)?;
+        }
     }
 
     cert_builder.sign(ca_key_pair, MessageDigest::sha256())?;
