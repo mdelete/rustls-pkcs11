@@ -2,13 +2,14 @@ use cryptoki::{
     context::{CInitializeArgs, Pkcs11},
     mechanism::{
         Mechanism, MechanismType,
+        eddsa::{EddsaParams, EddsaSignatureScheme},
         rsa::{PkcsMgfType, PkcsPssParams},
     },
     object::{Attribute, AttributeType, CertificateType, KeyType, ObjectClass},
     session::{Session, UserType},
     types::AuthPin,
 };
-use log::{debug, info};
+use log::{debug, error, info};
 use rustls::{
     self, OtherError, SignatureAlgorithm, SignatureScheme,
     client::ResolvesClientCert,
@@ -61,7 +62,7 @@ struct PKCS11Signer {
 /// YubiKey (5.1) supports:
 ///   ECDSA_NISTP384_SHA384, ECDSA_NISTP256_SHA256
 ///   RSA_PKCS1_SHA384, RSA_PKCS1_SHA256
-/// Maybe, newer YubiKey or other HSM implement RSA_PSS and SHA512...
+/// Most HSM do not implement RSA_PSS_*, *_SHA512, and ED25519
 ///
 impl<'a> TryInto<Mechanism<'a>> for &PKCS11Signer {
     type Error = rustls::Error;
@@ -72,10 +73,14 @@ impl<'a> TryInto<Mechanism<'a>> for &PKCS11Signer {
             SignatureScheme::ECDSA_NISTP256_SHA256 => Ok(Mechanism::EcdsaSha256),
             // 1.2.840.10045.4.3.3
             SignatureScheme::ECDSA_NISTP384_SHA384 => Ok(Mechanism::EcdsaSha384),
+            // 1.2.840.10045.4.3.4
+            SignatureScheme::ECDSA_NISTP521_SHA512 => Ok(Mechanism::EcdsaSha512),
             // 1.2.840.113549.1.1.11
             SignatureScheme::RSA_PKCS1_SHA256 => Ok(Mechanism::Sha256RsaPkcs),
             // 1.2.840.113549.1.1.12
             SignatureScheme::RSA_PKCS1_SHA384 => Ok(Mechanism::Sha384RsaPkcs),
+            // 1.2.840.113549.1.1.12
+            SignatureScheme::RSA_PKCS1_SHA512 => Ok(Mechanism::Sha512RsaPkcs),
             // 1.2.840.113549.1.1.10 ...
             SignatureScheme::RSA_PSS_SHA256 => {
                 let params = PkcsPssParams {
@@ -94,6 +99,19 @@ impl<'a> TryInto<Mechanism<'a>> for &PKCS11Signer {
                 };
                 Ok(Mechanism::Sha384RsaPkcsPss(params))
             }
+            // 1.2.840.113549.1.1.10 ...
+            SignatureScheme::RSA_PSS_SHA512 => {
+                let params = PkcsPssParams {
+                    hash_alg: MechanismType::SHA512_RSA_PKCS, // 2.16.840.1.101.3.4.2.3
+                    mgf: PkcsMgfType::MGF1_SHA512, // 1.2.840.113549.1.1.8 + 2.16.840.1.101.3.4.2.3
+                    s_len: 64.into(),
+                };
+                Ok(Mechanism::Sha384RsaPkcsPss(params))
+            }
+            // TODO: which HSM really supports this?
+            SignatureScheme::ED25519 => Ok(Mechanism::Eddsa(EddsaParams::new(
+                EddsaSignatureScheme::Ed25519,
+            ))),
             unsupported_scheme => Err(rustls::Error::Other(OtherError(Arc::new(
                 PKCS11Error::UnsupportedSignatureSchemeError(unsupported_scheme),
             )))),
@@ -262,11 +280,11 @@ impl ToASN1 for Vec<u8> {
         let mut mid = self.len() / 2;
 
         // if r or s are negative (have the msb set) we need to prepend a null byte before converting to bigint
-        if self[0] >> 7 != 0 {
+        if self[0] >> 7 == 1 {
             self.insert(0, 0u8);
-            mid += 1;
+            mid += 1; // shift the middle
         }
-        if self[mid] >> 7 != 0 {
+        if self[mid] >> 7 == 1 {
             self.insert(mid, 0u8);
         }
 
@@ -301,7 +319,8 @@ fn parse_certificate(
             debug!("Pubkey({:02x})", x509.public_key_data());
 
             let scheme = match x509.signature_algorithm().unwrap() {
-                // TODO: (old) HSMs do not support RSA_PSS_* and *_SHA512
+                // TODO: most HSMs do not support RSA_PSS_* and *_SHA512
+                // Yubikey 5.7 seemingly does not support ED25519 certificates
                 x509_certificate::SignatureAlgorithm::RsaSha256 => {
                     SignatureScheme::RSA_PKCS1_SHA256 // TODO: support both RSA_PSS_SHA256 and RSA_PKCS1_SHA256
                 }
@@ -314,8 +333,8 @@ fn parse_certificate(
                 x509_certificate::SignatureAlgorithm::EcdsaSha384 => {
                     SignatureScheme::ECDSA_NISTP384_SHA384
                 }
-                _ => {
-                    // technically, this cannot happen, as the HSM should not import certificates it cannot handle in the first place
+                unsupported_scheme => {
+                    error!("Unsupported scheme: {}", unsupported_scheme);
                     return Err(Box::new(PKCS11Error::UnsupportedSignatureSchemeError(
                         SignatureScheme::Unknown(0),
                     )));
