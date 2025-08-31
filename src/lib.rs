@@ -64,6 +64,10 @@ struct PKCS11Signer {
 ///   RSA_PKCS1_SHA384, RSA_PKCS1_SHA256
 /// Most HSM do not implement RSA_PSS_*, *_SHA512, and ED25519
 ///
+/// # Errors
+///
+/// - yields UnsupportedSignatureSchemeError for schemes that are not TLSv1.2 or TLSv1.3
+///
 impl<'a> TryInto<Mechanism<'a>> for &PKCS11Signer {
     type Error = rustls::Error;
 
@@ -240,6 +244,37 @@ impl ResolvesClientCert for PKCS11ClientCertResolver {
 }
 
 impl PKCS11ClientCertResolver {
+    /// Create a new PKCS11ClientCertResolver
+    ///
+    /// # Arguments
+    ///
+    /// * `pin` - A optional &str of the pin that unlocks the device. Set to `None` if device does not need a pin to unlock.
+    /// * `path` - Absolute filepath to the PKCS11 library of your device.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let pin = Some("123456");
+    /// let tls = rustls::ClientConfig::builder()
+    ///    .with_root_certificates(root_certs)
+    ///    .with_client_cert_resolver(Arc::new(
+    ///        PKCS11ClientCertResolver::new(pin, "/usr/lib/opensc-pkcs11.so")?,
+    ///    ));
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Authenticator devices are complicated things. A lot can go wrong along the way.
+    /// To alleviate this, most checks happen at instantiation time here, therefore errors
+    /// yielded here can have a plethora of reasons:
+    ///
+    /// - the PKCS11 library could not be loaded under the file path.
+    /// - the pin is missing or incorrect.
+    /// - the authenticator device is not present or inaccessible.
+    /// - the PKCS11 library has problems communicating with the authenicator device.
+    /// - the authenticator device cannot read an appropriate certificate from the relevant slot.
+    /// - the authenticator device's certificate signature scheme is not supported.
+    ///
     pub fn new(pin: Option<&str>, path: &OsStr) -> Result<Self, Box<dyn std::error::Error>> {
         let pkcs11client = Pkcs11::new(path)?;
         pkcs11client.initialize(CInitializeArgs::OsThreads)?;
