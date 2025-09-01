@@ -244,11 +244,11 @@ impl ResolvesClientCert for PKCS11ClientCertResolver {
 }
 
 impl PKCS11ClientCertResolver {
-    /// Create a new PKCS11ClientCertResolver
+    /// Create a new PKCS11ClientCertResolver.
     ///
     /// # Arguments
     ///
-    /// * `pin` - A optional &str of the pin that unlocks the device. Set to `None` if device does not need a pin to unlock.
+    /// * `pin` - An optional `&str` of the pin that unlocks the device. Set to `None` if device does not need a pin to unlock.
     /// * `path` - Absolute filepath to the PKCS11 library of your device.
     ///
     /// # Examples
@@ -258,7 +258,7 @@ impl PKCS11ClientCertResolver {
     /// let tls = rustls::ClientConfig::builder()
     ///    .with_root_certificates(root_certs)
     ///    .with_client_cert_resolver(Arc::new(
-    ///        PKCS11ClientCertResolver::new(pin, "/usr/lib/opensc-pkcs11.so")?,
+    ///        PKCS11ClientCertResolver::new(pin, "/usr/lib/opensc-pkcs11.so")?
     ///    ));
     /// ```
     ///
@@ -271,7 +271,7 @@ impl PKCS11ClientCertResolver {
     /// - the PKCS11 library could not be loaded under the file path.
     /// - the pin is missing or incorrect.
     /// - the authenticator device is not present or inaccessible.
-    /// - the PKCS11 library has problems communicating with the authenicator device.
+    /// - the PKCS11 library has problems communicating with the authenticator device.
     /// - the authenticator device cannot read an appropriate certificate from the relevant slot.
     /// - the authenticator device's certificate signature scheme is not supported.
     ///

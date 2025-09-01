@@ -1,8 +1,8 @@
 # rustls-pkcs11
 
-Resolve rustls client certs with hardware security modules like YubiKey or smartcards using the PKCS11 standard.
+Resolve rustls client certs with hardware security modules (HSM) like YubiKey or smartcards using the PKCS11 standard.
 
-Caution: Only tested with YubiKeys (ECDSA/RSA) and OpenPGP Card 3.4 so far on Linux and MacOS.
+**Caution**: Only tested with YubiKey (ECDSA/RSA) and OpenPGP Card 3.4 (RSA) on Linux and MacOS, so far.
 
 Currently supported signature algorithms:
 
@@ -15,18 +15,18 @@ Currently supported signature algorithms:
 
 ```
   ...
-    let pin = Some("1234");
-    let tls = rustls::ClientConfig::builder()
-        .with_root_certificates(root_certs)
-        .with_client_cert_resolver(Arc::new(
-            PKCS11ClientCertResolver::new(pin, "/path/to/opensc-pkcs11.so").unwrap(),
-        ));
+  let pin = Some("1234");
+  let tls = rustls::ClientConfig::builder()
+      .with_root_certificates(root_certs)
+      .with_client_cert_resolver(Arc::new(
+          PKCS11ClientCertResolver::new(pin, "/path/to/opensc-pkcs11.so")?
+    ));
   ...
 ```
 
 ## Testing the example with openssl s_server
 
-Set the environment variable ```PKCS11_MODULE_PATH``` to your the absolute path of your PKCS11-lib (like libykcs11 or opensc).
+Set the environment variable ```PKCS11_MODULE_PATH``` to the absolute path of your PKCS11-library (like libykcs11 or opensc).
 
 Example (YubiKey on MacOS):
 ```
@@ -83,7 +83,7 @@ You can use an OpenPGP Card in a smart card slot of your Thinkpad or similar to 
 
 The procedure for installing the certificate is straighforward but a little bit weird, but maybe [this](https://github.com/OpenSC/OpenSC/wiki/OpenPGP-card) information is also a bit outdated.
 
-Installing the certificate is only possible in ID 3, this is normally the authentication slot. For use with TLS the information has to be available under ID 1, the signing slot. To achive this, the private key has to be uploaded to ID 1 as well, using the ADMIN pin and by using the auth-ID 3.
+Installing the certificate is only possible in ID 3, this is normally the authentication slot. For use with TLS the information has to be available under ID 1, the signing slot. To achieve this, the private key has to be uploaded to ID 1 as well, using the ADMIN pin and by using the auth-ID 3.
 
 At first, we need to extract the private key from the test bundle:
 ```
