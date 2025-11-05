@@ -14,7 +14,7 @@ categories = ["cryptography"]
 cryptoki = "0.10"
 rustls = ">=0.22"
 x509-certificate = "0.25"
-asn1 = "0.22"
+asn1 = "0.23"
 log = "0.4"
 
 [dev-dependencies]
