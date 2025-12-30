@@ -9,7 +9,6 @@ use std::{error::Error, sync::Arc};
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("debug")).init();
-    let _ = rustls::crypto::ring::default_provider().install_default();
 
     let pin_string = rpassword::prompt_password("PIN> ").unwrap();
     let re = Regex::new(r"^[0-9]{6}$").unwrap();
