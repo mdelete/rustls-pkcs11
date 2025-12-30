@@ -83,7 +83,7 @@ impl<'a> TryInto<Mechanism<'a>> for &PKCS11Signer {
             SignatureScheme::RSA_PKCS1_SHA256 => Ok(Mechanism::Sha256RsaPkcs),
             // 1.2.840.113549.1.1.12
             SignatureScheme::RSA_PKCS1_SHA384 => Ok(Mechanism::Sha384RsaPkcs),
-            // 1.2.840.113549.1.1.12
+            // 1.2.840.113549.1.1.13
             SignatureScheme::RSA_PKCS1_SHA512 => Ok(Mechanism::Sha512RsaPkcs),
             // 1.2.840.113549.1.1.10 ...
             SignatureScheme::RSA_PSS_SHA256 => {
