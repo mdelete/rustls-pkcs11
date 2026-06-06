@@ -1,6 +1,6 @@
 [package]
 name = "rustls-pkcs11"
-version = "0.1.0"
+version = "0.1.1"
 description = "ClientCertResolver for Hardware Security Modules using the PKCS11-Api"
 edition = "2024"
 license = "MIT"
