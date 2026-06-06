@@ -1,5 +1,5 @@
 use cryptoki::{
-    context::{CInitializeArgs, Pkcs11},
+    context::{CInitializeArgs, CInitializeFlags, Pkcs11},
     mechanism::{
         Mechanism, MechanismType,
         eddsa::{EddsaParams, EddsaSignatureScheme},
@@ -277,7 +277,7 @@ impl PKCS11ClientCertResolver {
     ///
     pub fn new(pin: Option<&str>, path: &OsStr) -> Result<Self, Box<dyn std::error::Error>> {
         let pkcs11client = Pkcs11::new(path)?;
-        pkcs11client.initialize(CInitializeArgs::OsThreads)?;
+        pkcs11client.initialize(CInitializeArgs::new(CInitializeFlags::OS_LOCKING_OK))?;
 
         let slot = pkcs11client.get_slots_with_token()?.remove(0); // This only ever shows slot 9a of a YubiKey
         let session = pkcs11client.open_ro_session(slot)?;

@@ -11,7 +11,7 @@ keywords = ["pkcs11", "rustls"]
 categories = ["cryptography"]
 
 [dependencies]
-cryptoki = "0.10"
+cryptoki = "0.12"
 rustls = ">=0.22"
 x509-certificate = "0.25"
 asn1 = "0.24"
